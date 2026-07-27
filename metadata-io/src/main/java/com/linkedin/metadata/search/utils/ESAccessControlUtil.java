@@ -2,6 +2,7 @@ package com.linkedin.metadata.search.utils;
 
 import static com.datahub.authorization.AuthUtil.isViewRestrictedEntityType;
 import static com.linkedin.metadata.Constants.QUERY_ENTITY_NAME;
+import static com.linkedin.metadata.Constants.SCHEMA_FIELD_ENTITY_NAME;
 
 import com.datahub.authorization.AuthUtil;
 import com.linkedin.common.urn.Urn;
@@ -80,6 +81,9 @@ public class ESAccessControlUtil {
     if (QUERY_ENTITY_NAME.equals(urn.getEntityType())) {
       return EntityAspectAuthorizationUtils.canViewQueryEntity(
           opContext, opContext, opContext.getAspectRetriever(), urn);
+    }
+    if (SCHEMA_FIELD_ENTITY_NAME.equals(urn.getEntityType())) {
+      return EntityAspectAuthorizationUtils.canViewSchemaFieldEntity(opContext, urn);
     }
     return AuthUtil.canViewEntity(opContext, urn);
   }

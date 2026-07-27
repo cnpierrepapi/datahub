@@ -16,6 +16,7 @@ import com.linkedin.common.urn.Urn;
 import com.linkedin.common.urn.UrnUtils;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.PatchEntityInput;
+import com.linkedin.metadata.authorization.EntityAspectAuthorizationUtils;
 import com.linkedin.metadata.authorization.PoliciesConfig;
 import io.datahubproject.metadata.context.OperationContext;
 import java.lang.reflect.Field;
@@ -265,6 +266,9 @@ public class AuthorizationUtils {
             opContext.getOperationContextConfig().getViewAuthorizationConfiguration(),
             urn.getEntityType())) {
 
+      if (SCHEMA_FIELD_ENTITY_NAME.equals(urn.getEntityType())) {
+        return EntityAspectAuthorizationUtils.canViewSchemaFieldEntity(opContext, urn);
+      }
       return canViewEntity(opContext, urn);
     }
     return true;

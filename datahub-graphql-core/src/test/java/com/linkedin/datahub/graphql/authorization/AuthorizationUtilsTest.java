@@ -2,19 +2,33 @@ package com.linkedin.datahub.graphql.authorization;
 
 import static com.linkedin.datahub.graphql.TestUtils.getMockAllowContext;
 import static com.linkedin.datahub.graphql.TestUtils.getMockDenyContext;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
+import com.datahub.authorization.AuthUtil;
+import com.datahub.authorization.config.ViewAuthorizationConfiguration;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.common.urn.UrnUtils;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.ViewProperties;
+import com.linkedin.metadata.authorization.EntityAspectAuthorizationUtils;
+import io.datahubproject.metadata.context.OperationContext;
+import io.datahubproject.metadata.context.OperationContextConfig;
+import org.mockito.MockedStatic;
 import org.testng.annotations.Test;
 
 public class AuthorizationUtilsTest {
 
   private static final Urn TEST_DOCUMENT_URN = UrnUtils.getUrn("urn:li:document:test-doc");
+  private static final Urn TEST_SCHEMA_FIELD_URN =
+      UrnUtils.getUrn(
+          "urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:hive,SampleHiveDataset,PROD),field_foo)");
 
   @Test
   public void testRestrictedViewProperties() {
@@ -113,5 +127,39 @@ public class AuthorizationUtilsTest {
   public void testCanCreateLogicalModelsDenied() {
     QueryContext context = getMockDenyContext();
     assertFalse(AuthorizationUtils.canCreateLogicalModels(context));
+  }
+
+  @Test
+  public void testCanViewSchemaFieldUsesParentInheritanceHelper() {
+    OperationContext opContext = mock(OperationContext.class);
+    OperationContextConfig config = mock(OperationContextConfig.class);
+    ViewAuthorizationConfiguration viewAuth =
+        ViewAuthorizationConfiguration.builder().enabled(true).build();
+    when(opContext.getOperationContextConfig()).thenReturn(config);
+    when(config.getViewAuthorizationConfiguration()).thenReturn(viewAuth);
+    when(opContext.isSystemAuth()).thenReturn(false);
+
+    try (MockedStatic<AuthUtil> authUtil = mockStatic(AuthUtil.class);
+        MockedStatic<EntityAspectAuthorizationUtils> entityAuth =
+            mockStatic(EntityAspectAuthorizationUtils.class)) {
+      authUtil
+          .when(() -> AuthUtil.isViewRestrictedEntityType(eq(viewAuth), eq("schemaField")))
+          .thenReturn(true);
+      entityAuth
+          .when(
+              () ->
+                  EntityAspectAuthorizationUtils.canViewSchemaFieldEntity(
+                      eq(opContext), eq(TEST_SCHEMA_FIELD_URN)))
+          .thenReturn(true);
+
+      assertTrue(AuthorizationUtils.canView(opContext, TEST_SCHEMA_FIELD_URN));
+      entityAuth.verify(
+          () ->
+              EntityAspectAuthorizationUtils.canViewSchemaFieldEntity(
+                  opContext, TEST_SCHEMA_FIELD_URN));
+      authUtil.verify(
+          () -> AuthUtil.canViewEntity(any(OperationContext.class), any(Urn.class)),
+          org.mockito.Mockito.never());
+    }
   }
 }
