@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.testng.Assert.*;
 
 import com.datahub.authentication.Authentication;
+import com.linkedin.common.urn.Urn;
+import com.linkedin.common.urn.UrnUtils;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.generated.BusinessAttribute;
 import com.linkedin.datahub.graphql.generated.Chart;
@@ -15,8 +17,11 @@ import com.linkedin.datahub.graphql.generated.Entity;
 import com.linkedin.datahub.graphql.generated.EntityPrivileges;
 import com.linkedin.datahub.graphql.generated.GlossaryNode;
 import com.linkedin.datahub.graphql.generated.GlossaryTerm;
+import com.linkedin.datahub.graphql.generated.SchemaFieldEntity;
 import com.linkedin.entity.client.EntityClient;
 import com.linkedin.metadata.Constants;
+import com.linkedin.metadata.authorization.PoliciesConfig;
+import com.linkedin.metadata.utils.SchemaFieldUtils;
 import com.linkedin.r2.RemoteInvocationException;
 import graphql.schema.DataFetchingEnvironment;
 import java.util.concurrent.CompletionException;
@@ -33,6 +38,12 @@ public class EntityPrivilegesResolverTest {
   final String dataJobUrn =
       "urn:li:dataJob:(urn:li:dataFlow:(spark,test_machine.sparkTestApp,local),QueryExecId_31)";
   final String businessAttributeUrn = "urn:li:businessAttribute:testBusinessAttribute";
+  final String actorUrn = "urn:li:corpuser:test";
+  final Urn parentDatasetUrn = UrnUtils.getUrn(datasetUrn);
+  final Urn otherDatasetUrn =
+      UrnUtils.getUrn("urn:li:dataset:(urn:li:dataPlatform:kafka,protobuf.MessageB,TEST)");
+  final Urn schemaFieldUrn = SchemaFieldUtils.generateSchemaFieldUrn(parentDatasetUrn, "user_id");
+  final String editIncidents = PoliciesConfig.EDIT_ENTITY_INCIDENTS_PRIVILEGE.getType();
 
   private DataFetchingEnvironment setUpTestWithPermissions(Entity entity) {
     QueryContext mockContext = getMockAllowContext();
@@ -315,5 +326,41 @@ public class EntityPrivilegesResolverTest {
     assertTrue(result.getCanEditDescription());
     assertTrue(result.getCanEditLinks());
     assertTrue(result.getCanManageAssetSummary());
+  }
+
+  private DataFetchingEnvironment setUpSchemaFieldTest(QueryContext context) {
+    final SchemaFieldEntity schemaField = new SchemaFieldEntity();
+    schemaField.setUrn(schemaFieldUrn.toString());
+    DataFetchingEnvironment mockEnv = Mockito.mock(DataFetchingEnvironment.class);
+    Mockito.when(mockEnv.getContext()).thenReturn(context);
+    Mockito.when(mockEnv.getSource()).thenReturn(schemaField);
+    return mockEnv;
+  }
+
+  @Test
+  public void testGetSchemaFieldIncidentsAllowedByParentDatasetPolicy() throws Exception {
+    // The Incidents tab reads canEditIncidents off the field itself, so this has to agree with the
+    // raise / update mutations, which authorize on the parent encoded in the field URN.
+    QueryContext context =
+        getMockAllowContextForResource(actorUrn, editIncidents, parentDatasetUrn);
+    DataFetchingEnvironment mockEnv = setUpSchemaFieldTest(context);
+
+    EntityPrivilegesResolver resolver =
+        new EntityPrivilegesResolver(Mockito.mock(EntityClient.class));
+    EntityPrivileges result = resolver.get(mockEnv).get();
+
+    assertTrue(result.getCanEditIncidents());
+  }
+
+  @Test
+  public void testGetSchemaFieldIncidentsDeniedWhenPolicyNamesAnotherDataset() throws Exception {
+    QueryContext context = getMockAllowContextForResource(actorUrn, editIncidents, otherDatasetUrn);
+    DataFetchingEnvironment mockEnv = setUpSchemaFieldTest(context);
+
+    EntityPrivilegesResolver resolver =
+        new EntityPrivilegesResolver(Mockito.mock(EntityClient.class));
+    EntityPrivileges result = resolver.get(mockEnv).get();
+
+    assertFalse(result.getCanEditIncidents());
   }
 }

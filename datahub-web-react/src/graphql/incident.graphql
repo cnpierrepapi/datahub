@@ -303,5 +303,13 @@ query getEntityIncidents(
                 canEditIncidents
             }
         }
+        ... on SchemaFieldEntity {
+            incidents(start: $start, count: $count, state: $state) {
+                ...incidentResultFields
+            }
+            privileges {
+                canEditIncidents
+            }
+        }
     }
 }

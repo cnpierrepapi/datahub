@@ -69,6 +69,8 @@ public class EntityPrivilegesResolver implements DataFetcher<CompletableFuture<E
               return getDataJobPrivileges(urn, context);
             case Constants.DOCUMENT_ENTITY_NAME:
               return getDocumentPrivileges(urn, context);
+            case Constants.SCHEMA_FIELD_ENTITY_NAME:
+              return getSchemaFieldPrivileges(urn, context);
             default:
               log.warn(
                   "Tried to get entity privileges for entity type {}. Adding common privileges only.",
@@ -179,6 +181,23 @@ public class EntityPrivilegesResolver implements DataFetcher<CompletableFuture<E
     addCommonPrivileges(result, urn, context);
     // Document-specific: canManageEntity includes ability to delete/move documents
     result.setCanManageEntity(AuthorizationUtils.canEditDocument(urn, context));
+    return result;
+  }
+
+  /**
+   * Schema fields carry only the common privileges. There is no schemaField resource type in {@link
+   * com.linkedin.metadata.authorization.PoliciesConfig}, so each common check resolves the field
+   * against whatever URN it is written to authorize on. For incidents that is the parent entity
+   * encoded in the field URN, which {@link IncidentUtils#isAuthorizedToEditIncidentForResource}
+   * does on this resolver's behalf, so the Incidents tab agrees with the raise and resolve
+   * mutations.
+   *
+   * <p>This case exists so schema fields stop falling through to the default branch, which produces
+   * the same answer but logs a warning claiming the type is unhandled.
+   */
+  private EntityPrivileges getSchemaFieldPrivileges(Urn urn, QueryContext context) {
+    final EntityPrivileges result = new EntityPrivileges();
+    addCommonPrivileges(result, urn, context);
     return result;
   }
 

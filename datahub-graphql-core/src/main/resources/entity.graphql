@@ -3883,6 +3883,11 @@ type SchemaFieldEntity implements EntityWithRelationships & Entity {
   Glossary terms associated with the field
   """
   glossaryTerms: GlossaryTerms @aspectMapping(aspects: ["glossaryTerms"])
+
+  """
+  Privileges given to a user relevant to this entity
+  """
+  privileges: EntityPrivileges @noAspects
 }
 
 """

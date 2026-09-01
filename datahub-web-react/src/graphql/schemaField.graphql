@@ -37,6 +37,9 @@ fragment schemaFieldEntityFields on SchemaFieldEntity {
     glossaryTerms {
         ...glossaryTerms
     }
+    activeIncidents: incidents(start: 0, count: 1, state: ACTIVE) {
+        total
+    }
     parent {
         urn
         type

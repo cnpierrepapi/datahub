@@ -1,6 +1,7 @@
 import { PartitionOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { Rows } from '@phosphor-icons/react/dist/csr/Rows';
 import { TreeStructure } from '@phosphor-icons/react/dist/csr/TreeStructure';
+import { WarningCircle } from '@phosphor-icons/react/dist/csr/WarningCircle';
 import i18next from 'i18next';
 import * as React from 'react';
 
@@ -13,6 +14,7 @@ import { EntityProfile } from '@app/entityV2/shared/containers/profile/EntityPro
 import SidebarEntityHeader from '@app/entityV2/shared/containers/profile/sidebar/SidebarEntityHeader';
 import { getDataForEntityType } from '@app/entityV2/shared/containers/profile/utils';
 import SidebarNotesSection from '@app/entityV2/shared/sidebarSection/SidebarNotesSection';
+import { IncidentTab } from '@app/entityV2/shared/tabs/Incident/IncidentTab';
 import { LineageTab } from '@app/entityV2/shared/tabs/Lineage/LineageTab';
 import { PropertiesTab } from '@app/entityV2/shared/tabs/Properties/PropertiesTab';
 import { SidebarTitleActionType } from '@app/entityV2/shared/utils';
@@ -25,7 +27,7 @@ import TabFullsizedContext from '@src/app/shared/TabFullsizedContext';
 import { useGetSchemaFieldQuery } from '@graphql/schemaField.generated';
 import { EntityType, SchemaFieldEntity as SchemaField, SearchResult } from '@types';
 
-const headerDropdownItems = new Set([EntityMenuItems.SHARE, EntityMenuItems.ANNOUNCE]);
+const headerDropdownItems = new Set([EntityMenuItems.SHARE, EntityMenuItems.RAISE_INCIDENT, EntityMenuItems.ANNOUNCE]);
 
 export class SchemaFieldEntity implements Entity<SchemaField> {
     type: EntityType = EntityType.SchemaField;
@@ -74,6 +76,12 @@ export class SchemaFieldEntity implements Entity<SchemaField> {
                         name: i18next.t('entity.types:tab.properties'),
                         component: PropertiesTab,
                         icon: UnorderedListOutlined,
+                    },
+                    {
+                        name: i18next.t('entity.types:tab.incidents'),
+                        component: IncidentTab,
+                        icon: WarningCircle,
+                        getCount: (_, schemaField) => schemaField?.entity?.activeIncidents?.total,
                     },
                 ]}
                 sidebarSections={this.getSidebarSections()}

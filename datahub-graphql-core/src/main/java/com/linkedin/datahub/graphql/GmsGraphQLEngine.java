@@ -2335,6 +2335,7 @@ public class GmsGraphQLEngine {
                                 .map(Dataset::getLogicalParent)
                                 .orElse(null)))
                 .dataFetcher("relationships", new EntityRelationshipsResultResolver(graphClient))
+                .dataFetcher("privileges", new EntityPrivilegesResolver(entityClient))
                 .dataFetcher(
                     "lineage",
                     new EntityLineageResultResolver(
